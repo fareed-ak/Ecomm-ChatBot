@@ -5,6 +5,7 @@ import './ChatWindow.css'
 function ChatWindow({ messages, setMessages, setProducts }) {
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [sessionId] = useState(() => 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9))
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -31,13 +32,16 @@ function ChatWindow({ messages, setMessages, setProducts }) {
     setIsLoading(true)
 
     try {
-      // Send to backend
+      // Send to backend with session ID for memory management
       const response = await fetch('http://localhost:5000/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: inputMessage })
+        body: JSON.stringify({ 
+          message: inputMessage,
+          sessionId: sessionId
+        })
       })
 
       const data = await response.json()

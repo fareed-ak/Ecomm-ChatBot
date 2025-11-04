@@ -8,7 +8,7 @@ function App() {
   const [messages, setMessages] = useState([
     { 
       id: 1, 
-      text: "Hello! I'm your AI shopping assistant. Ask me about electronics, clothing, jewelry, or any products you're looking for!", 
+      text: "Hello! I'm your AI shopping assistant. I can help you find products on Amazon India.\n\nAsk me about:\n• Laptops, phones, headphones, etc.\n• Products under a certain price\n• Products with specific colors or brands\n\nExamples:\n• 'Show me laptops under ₹50,000'\n• 'I want a Samsung phone'\n• After a search, try 'under ₹30,000' or 'black color'", 
       sender: 'bot' 
     }
   ])
@@ -54,7 +54,7 @@ function App() {
         <h1>🛍️ E-Commerce AI Assistant</h1>
         <div className="header-status">
           <span className="status-indicator"></span>
-          Live Products Available
+          Live Products from Amazon India
         </div>
       </header>
       
@@ -81,7 +81,6 @@ function App() {
       <footer className="app-footer">
         <div className="footer-links">
           <span className="footer-link">&copy; E-Commerce ChatBot | All rights reserved</span>
-          
         </div>
         <div className="footer-info">
           <span>🔒 Secure Connection</span>

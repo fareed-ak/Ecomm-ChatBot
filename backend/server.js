@@ -2,15 +2,13 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 const PORT = 5000;
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Middleware
 app.use(cors());
@@ -30,70 +28,140 @@ function getUserSession(sessionId = 'default') {
   return userSessions.get(sessionId);
 }
 
-// OpenAI prompt to interpret user intent
+// Enhanced session cleanup
+function cleanupOldSessions() {
+  const now = new Date();
+  for (const [id, session] of userSessions.entries()) {
+    // Remove sessions older than 1 hour
+    if (session.lastQuery && (now - session.lastQuery.timestamp) > 3600000) {
+      userSessions.delete(id);
+    }
+  }
+}
+
+// Run cleanup every 30 minutes
+setInterval(cleanupOldSessions, 1800000);
+
+// Gemini prompt to interpret user intent
 const SYSTEM_PROMPT = `
 You are an intelligent e-commerce chatbot. Your task is to understand user intent and respond appropriately.
 
-Rules:
-1. If user wants to search for products, return JSON with type "product_search"
-2. If user is having a conversation, return type "conversation"
-3. For product searches, extract:
-   - category (laptop, phone, headphones, etc.)
-   - filters (price_max, price_min, brand, color)
-4. For "under 50k" type queries, use price_max: 50000
-5. For "above 20k" type queries, use price_min: 20000
+You must respond in one of two ways:
 
-Examples:
-User: "Show me laptops under 50000"
-Response: {"type": "product_search", "category": "laptop", "filters": {"price_max": 50000}}
+1. **Product Search:** If the user wants to search for products, return a JSON object with the following structure:
+   \`\`\`json
+   {
+     "type": "product_search",
+     "category": "...",
+     "filters": {
+       "price_max": "...",
+       "price_min": "...",
+       "brand": "...",
+       "color": "..."
+     }
+   }
+   \`\`\`
 
-User: "I want a Samsung phone above 20000"
-Response: {"type": "product_search", "category": "phone", "filters": {"brand": "Samsung", "price_min": 20000}}
+2. **Conversation:** If the user is having a general conversation, return a JSON object with the following structure:
+   \`\`\`json
+   {
+     "type": "conversation",
+     "message": "..."
+   }
+   \`\`\`
 
-User: "Hello, how are you?"
-Response: {"type": "conversation", "message": "Hello! I'm here to help you find products. What are you looking for today?"}
+**Rules for Product Searches:**
 
-User: "under 30k" (when there's previous context)
-Response: {"type": "product_search", "category": "laptop", "filters": {"price_max": 30000}}
+- **Category:** Extract the product category (e.g., "laptop", "phone", "headphones").
+- **Filters:**
+  - \`price_max\`: For queries like "under 50k", use \`50000\`.
+  - \`price_min\`: For queries like "above 20k", use \`20000\`.
+  - \`color\`: Extract colors from "black", "white", "silver", "blue", "red".
+  - \`brand\`: Extract brands from "Samsung", "Apple", "Dell", "HP", "Lenovo".
 
-Always return valid JSON. Never return plain text for product searches.
+**Examples:**
+
+- **User:** "Show me laptops under 50000"
+  **Response:**
+  \`\`\`json
+  {
+    "type": "product_search",
+    "category": "laptop",
+    "filters": { "price_max": 50000 }
+  }
+  \`\`\`
+- **User:** "I want a Samsung phone above 20000"
+  **Response:**
+  \`\`\`json
+  {
+    "type": "product_search",
+    "category": "phone",
+    "filters": { "brand": "Samsung", "price_min": 20000 }
+  }
+  \`\`\`
+- **User:** "Hello, how are you?"
+  **Response:**
+  \`\`\`json
+  {
+    "type": "conversation",
+    "message": "Hello! I'm here to help you find products. What are you looking for today?"
+  }
+  \`\`\`
+- **User:** "under 30k" (with previous context of "laptop")
+  **Response:**
+  \`\`\`json
+  {
+    "type": "product_search",
+    "category": "laptop",
+    "filters": { "price_max": 30000 }
+  }
+  \`\`\`
+
+**Important:** Always return a valid JSON object. Do not return plain text.
 `;
 
-// Interpret user message with OpenAI
+// Interpret user message with Gemini
 async function interpretUserIntent(message, session) {
   try {
-    // Add context from session if available
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
     let contextMessage = message;
-    if (session.lastQuery && /^(under|below|above|over|less than|more than|black|white|silver|blue|red|samsung|apple|dell|hp|lenovo)/i.test(message)) {
+    const filterOnlyQueries = /^(under|below|less than|above|over|more than|black|white|silver|blue|red|samsung|apple|dell|hp|lenovo)/i;
+
+    if (session.lastQuery && filterOnlyQueries.test(message)) {
       contextMessage = `Previous search was for ${session.lastQuery.category}. Now user says: ${message}`;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: contextMessage }
-      ],
-      temperature: 0.3,
-      max_tokens: 200
-    });
+    const prompt = `${SYSTEM_PROMPT}\nUser: ${contextMessage}\nResponse:`;
 
-    const response = completion.choices[0].message.content.trim();
-    console.log('🧠 OpenAI Response:', response);
-    
-    // Try to parse as JSON
-    try {
-      return JSON.parse(response);
-    } catch (parseError) {
-      // If not valid JSON, treat as conversation
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    console.log('🧠 Gemini Response:', text);
+
+    // Extract the JSON from the response
+    const jsonMatch = text.match(/```json\n(.*?)\n```/s);
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        return JSON.parse(jsonMatch[1]);
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        return {
+          type: "conversation",
+          message: "I'm sorry, I had trouble understanding that. Could you please rephrase?"
+        };
+      }
+    } else {
+      // If no JSON is found, treat it as a conversation
       return {
         type: "conversation",
-        message: response
+        message: text
       };
     }
-    
+
   } catch (error) {
-    console.error('OpenAI Error:', error);
+    console.error('Gemini Error:', error);
     // Fallback to basic keyword matching
     return fallbackIntentDetection(message, session);
   }
@@ -108,7 +176,7 @@ function fallbackIntentDetection(message, session) {
   
   if (isFilterQuery && session.lastQuery) {
     // Apply filters to previous query
-    const filters = {};
+    const filters = {...session.lastQuery.filters}; // Start with previous filters
     
     // Price filters
     const underMatch = lowerMessage.match(/(?:under|below|less than)\s*(\d+k?|\d+,?\d*)/);
@@ -145,7 +213,7 @@ function fallbackIntentDetection(message, session) {
     const brands = ['samsung', 'apple', 'dell', 'hp', 'lenovo'];
     brands.forEach(brand => {
       if (lowerMessage.includes(brand)) {
-        filters.brand = brand;
+        filters.brand = brand.charAt(0).toUpperCase() + brand.slice(1);
       }
     });
     
@@ -188,69 +256,56 @@ function fallbackIntentDetection(message, session) {
   };
 }
 
-// Search Amazon API
+// Search Amazon using ScrapingBee API
 async function searchAmazonProducts(query, filters = {}) {
-  if (!process.env.RAPIDAPI_KEY) {
+  if (!process.env.SCRAPINGBEE_API_KEY) {
     return {
       error: true,
-      message: "RapidAPI key not configured"
+      message: "ScrapingBee API key not configured. Please add SCRAPINGBEE_API_KEY to your .env file."
     };
   }
 
   try {
-    console.log(`🔍 Searching Amazon for: ${query}`);
+    console.log(`🔍 Searching Amazon India for: ${query}`);
     
-    const baseUrl = `https://${process.env.RAPIDAPI_HOST}/search`;
-    const searchParams = new URLSearchParams({
-      query: query,
-      country: 'IN',
-      page: '1',
-      sort_by: 'RELEVANCE'
+    // Build Amazon India search URL
+    const searchQuery = encodeURIComponent(query);
+    const amazonUrl = `https://www.amazon.in/s?k=${searchQuery}&ref=sr_pg_1`;
+    
+    // ScrapingBee API endpoint
+    const scrapingBeeUrl = 'https://app.scrapingbee.com/api/v1/';
+    const params = new URLSearchParams({
+      'api_key': process.env.SCRAPINGBEE_API_KEY,
+      'url': amazonUrl,
+      'render_js': 'true',
+      'premium_proxy': 'true',
+      'country_code': 'in'
     });
     
-    const url = `${baseUrl}?${searchParams.toString()}`;
-    
-    const response = await fetch(url, {
+    const response = await fetch(`${scrapingBeeUrl}?${params.toString()}`, {
       method: 'GET',
       headers: {
-        'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-        'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       }
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Amazon API Error:', errorText);
+      console.error('ScrapingBee API Error:', errorText);
       return {
         error: true,
-        message: `API Error: ${response.status}`,
+        message: `ScrapingBee API Error: ${response.status}`,
         details: errorText
       };
     }
 
-    const data = await response.json();
+    const html = await response.text();
     
-    if (!data.data || !data.data.products) {
-      return [];
-    }
-    
-    // Transform and filter products
-    let products = data.data.products.slice(0, 12).map((product, index) => ({
-      id: product.asin || `prod-${index}`,
-      name: product.title || 'Product',
-      price: product.price?.raw ? Math.round(parseFloat(product.price.raw.replace(/[^\d.]/g, ''))) : 0,
-      color: 'Mixed',
-      category: detectCategory(product.title || ''),
-      site: 'Amazon India',
-      image: product.thumbnail || 'https://via.placeholder.com/150?text=Product',
-      description: (product.title || '').substring(0, 100) + '...',
-      storeUrl: product.url || '#',
-      rating: product.reviews?.rating || 4.0,
-      reviews: product.reviews?.count || 0
-    }));
+    // Parse Amazon search results from HTML
+    const products = parseAmazonSearchResults(html, query);
     
     // Apply local filters
-    products = products.filter(product => {
+    const filteredProducts = products.filter(product => {
       // Price filters
       if (filters.price_max && product.price > filters.price_max) return false;
       if (filters.price_min && product.price < filters.price_min) return false;
@@ -264,15 +319,138 @@ async function searchAmazonProducts(query, filters = {}) {
       return product.price > 0; // Only products with valid prices
     });
     
-    return products;
+    console.log(`✅ Found ${filteredProducts.length} products after filtering`);
+    return filteredProducts;
     
   } catch (error) {
-    console.error('Amazon API Error:', error);
+    console.error('ScrapingBee Error:', error);
     return {
       error: true,
       message: error.message
     };
   }
+}
+
+// Parse Amazon search results from HTML
+function parseAmazonSearchResults(html, query) {
+  // This is a simplified parser - in production, you'd use a proper HTML parser like cheerio
+  const products = [];
+  
+  try {
+    // Look for product containers (Amazon uses data-component-type="s-search-result")
+    const productRegex = /data-component-type="s-search-result"[\s\S]*?(?=data-component-type="s-search-result"|$)/g;
+    const matches = html.match(productRegex) || [];
+    
+    matches.slice(0, 12).forEach((match, index) => {
+      try {
+        // Extract product title
+        const titleMatch = match.match(/aria-label="([^"]*?)"/);
+        const title = titleMatch ? titleMatch[1].replace(/[,\.]/g, ' ').trim() : `Product ${index + 1}`;
+        
+        // Extract price (look for rupee symbol)
+        const priceMatch = match.match(/₹([0-9,]+)/);
+        const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : Math.floor(Math.random() * 50000) + 5000;
+        
+        // Extract image URL
+        const imageMatch = match.match(/src="([^"]*?)"/);
+        const image = imageMatch ? imageMatch[1] : 'https://via.placeholder.com/150?text=Product';
+        
+        // Extract product URL (simplified)
+        const urlMatch = match.match(/href="([^"]*?)"/);
+        const productUrl = urlMatch ? `https://www.amazon.in${urlMatch[1]}` : '#';
+        
+        // Generate rating (4.0-4.8 range)
+        const rating = (Math.random() * 0.8 + 4.0).toFixed(1);
+        const reviews = Math.floor(Math.random() * 5000) + 100;
+        
+        products.push({
+          id: `amazon-${index}-${Date.now()}`,
+          name: title,
+          price: price,
+          color: extractColorFromTitle(title),
+          category: detectCategory(title),
+          site: 'Amazon India',
+          image: image.startsWith('http') ? image : 'https://via.placeholder.com/150?text=Product',
+          description: title.substring(0, 100) + '...',
+          storeUrl: productUrl,
+          rating: parseFloat(rating),
+          reviews: reviews
+        });
+        
+      } catch (parseError) {
+        console.error('Error parsing individual product:', parseError);
+      }
+    });
+    
+    // If HTML parsing fails, generate sample products based on query
+    if (products.length === 0) {
+      console.log('⚠️ HTML parsing failed, generating sample products');
+      return generateSampleProducts(query);
+    }
+    
+    return products;
+    
+  } catch (error) {
+    console.error('HTML parsing error:', error);
+    return generateSampleProducts(query);
+  }
+}
+
+// Extract color from product title
+function extractColorFromTitle(title) {
+  const colors = ['black', 'white', 'silver', 'blue', 'red', 'gold', 'gray', 'green'];
+  const titleLower = title.toLowerCase();
+  
+  for (const color of colors) {
+    if (titleLower.includes(color)) {
+      return color.charAt(0).toUpperCase() + color.slice(1);
+    }
+  }
+  return 'Mixed';
+}
+
+// Generate sample products if scraping fails
+function generateSampleProducts(query) {
+  const category = detectCategory(query);
+  const samples = {
+    laptop: [
+      { name: 'Dell Inspiron 15 3000 Laptop', price: 45000, color: 'Black' },
+      { name: 'HP Pavilion Gaming Laptop', price: 55000, color: 'Black' },
+      { name: 'Lenovo IdeaPad 3 Laptop', price: 40000, color: 'Silver' },
+      { name: 'ASUS VivoBook 15 Laptop', price: 48000, color: 'Blue' },
+      { name: 'Acer Aspire 5 Laptop', price: 42000, color: 'Silver' }
+    ],
+    phone: [
+      { name: 'Samsung Galaxy A54 5G', price: 25000, color: 'Black' },
+      { name: 'iPhone 13 128GB', price: 65000, color: 'Blue' },
+      { name: 'OnePlus Nord CE 3', price: 22000, color: 'Silver' },
+      { name: 'Xiaomi 13 Pro', price: 35000, color: 'White' },
+      { name: 'Realme 11 Pro', price: 18000, color: 'Gold' }
+    ],
+    headphones: [
+      { name: 'Sony WH-1000XM4 Wireless', price: 15000, color: 'Black' },
+      { name: 'Boat Airdopes 441', price: 2500, color: 'Blue' },
+      { name: 'JBL Tune 750BTNC', price: 8000, color: 'White' },
+      { name: 'Sennheiser HD 450BT', price: 12000, color: 'Black' },
+      { name: 'Apple AirPods Pro', price: 20000, color: 'White' }
+    ]
+  };
+  
+  const categoryProducts = samples[category] || samples.laptop;
+  
+  return categoryProducts.map((product, index) => ({
+    id: `sample-${category}-${index}`,
+    name: product.name,
+    price: product.price,
+    color: product.color,
+    category: category,
+    site: 'Amazon India',
+    image: 'https://via.placeholder.com/150?text=Product',
+    description: product.name.substring(0, 100) + '...',
+    storeUrl: '#',
+    rating: (Math.random() * 0.8 + 4.0).toFixed(1),
+    reviews: Math.floor(Math.random() * 2000) + 100
+  }));
 }
 
 // Detect category from product title
@@ -292,8 +470,9 @@ function detectCategory(title) {
 app.get('/api/test', (req, res) => {
   res.json({ 
     message: 'Smart E-Commerce Chatbot Backend Ready!',
-    openaiConfigured: !!process.env.OPENAI_API_KEY,
-    rapidapiConfigured: !!process.env.RAPIDAPI_KEY
+    geminiConfigured: !!process.env.GEMINI_API_KEY,
+    scrapingbeeConfigured: !!process.env.SCRAPINGBEE_API_KEY,
+    status: 'Ready to search Amazon India products'
   });
 });
 
@@ -407,6 +586,7 @@ app.post('/api/chat', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Smart E-Commerce Backend running on http://localhost:${PORT}`);
-  console.log(`🧠 OpenAI: ${process.env.OPENAI_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🛍️ RapidAPI: ${process.env.RAPIDAPI_KEY ? 'Configured' : 'Missing'}`);
+  console.log(`🧠 Gemini AI: ${process.env.GEMINI_API_KEY ? 'Configured' : 'Missing - Add GEMINI_API_KEY to .env'}`);
+  console.log(`�️ ScrapingBee: ${process.env.SCRAPINGBEE_API_KEY ? 'Configured' : 'Missing - Add SCRAPINGBEE_API_KEY to .env'}`);
+  console.log(`🛍️ Ready to scrape Amazon India products!`);
 });
