@@ -1,180 +1,273 @@
-# 🛍️ E-Commerce AI ChatBot
+# 🛍️ Smart E-Commerce AI ChatBot
 
-An intelligent shopping assistant that helps users find products through natural language conversations. Built with React frontend and Node.js backend, featuring real-time product search and AI-powered recommendations.
+An intelligent shopping assistant that helps users find **any product** on Amazon India through natural language conversations. Built with React frontend, Node.js backend, Google Gemini AI, and ScrapingBee for real-time product scraping.
 
-![E-Commerce ChatBot](https://img.shields.io/badge/Status-Active-green) ![Node.js](https://img.shields.io/badge/Node.js-18+-blue) ![React](https://img.shields.io/badge/React-18+-blue) ![License](https://img.shields.io/badge/License-MIT-yellow)
+![E-Commerce ChatBot](https://img.shields.io/badge/Status-Active-green) ![Node.js](https://img.shields.io/badge/Node.js-18+-blue) ![React](https://img.shields.io/badge/React-18+-blue) ![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-orange) ![ScrapingBee](https://img.shields.io/badge/Scraping-ScrapingBee-yellow)
 
 ## ✨ Features
 
-- **🤖 Intelligent Chat Interface**: Natural language product search and recommendations
-- **🔍 Real-time Product Search**: Integration with Amazon API for live product data
-- **🎯 Smart Filtering**: Filter by price, brand, color, and category
-- **💾 Session Memory**: Remembers user preferences within conversation
-- **📱 Responsive Design**: Works seamlessly on desktop and mobile
-- **🎨 Modern UI**: Clean, intuitive interface with smooth animations
-- **⚡ Fast Performance**: Optimized for quick product discovery
+- **🤖 Natural Language Understanding**: Ask in plain English - "Show me black shirts under 2000"
+- **🔍 Universal Product Search**: Find ANY product - electronics, clothing, jewelry, home appliances, books, etc.
+- **🧠 AI-Powered Intent Detection**: Google Gemini AI understands what you want
+- **🕷️ Real-time Web Scraping**: ScrapingBee scrapes live Amazon India data
+- **🎯 Smart Filtering**: Automatic price, brand, color, and category filtering
+- **💾 Conversation Memory**: Remembers your search context within the session
+- **📱 Responsive Design**: Works perfectly on desktop, tablet, and mobile
+- **⚡ Fast & Reliable**: Optimized for quick product discovery
 
-## 🚀 Quick Start
+## 🛠️ How It Works
+
+```
+User: "Show me Samsung phones under 30000"
+    ↓
+🧠 Gemini AI analyzes and extracts:
+   • Category: "phone"
+   • Brand: "Samsung" 
+   • Max Price: 30000
+    ↓
+🕷️ ScrapingBee scrapes Amazon India:
+   • Searches: "Samsung phone"
+   • Parses product data from HTML
+    ↓
+⚙️ Backend filters results:
+   • Only Samsung phones
+   • Price ≤ ₹30,000
+    ↓
+📱 Frontend displays:
+   • Beautiful product grid
+   • Real prices, images, links
+```
+
+## 🎯 Supported Product Categories
+
+Your chatbot can find **literally anything** on Amazon India:
+
+### 📱 Electronics
+- Laptops, phones, tablets, headphones, cameras, TVs, speakers, smartwatches
+
+### 👕 Clothing & Fashion  
+- Shirts, jeans, dresses, shoes, bags, jackets, sarees, kurtas
+
+### 💎 Jewelry & Accessories
+- Necklaces, earrings, bracelets, rings, gold/silver jewelry
+
+### 🏠 Home & Kitchen
+- Iron, mixer, pressure cooker, refrigerator, washing machine, microwave, AC, furniture
+
+### 💄 Beauty & Health
+- Shampoo, creams, perfumes, makeup, skincare products
+
+### 📚 Books & Education
+- Novels, textbooks, stationery, pens, notebooks
+
+### 🏃 Sports & Fitness
+- Gym equipment, cricket gear, fitness accessories
+
+### 🧸 Toys & Games
+- Children's toys, board games, puzzles
+
+### 🚗 Automotive & Tools
+- Car accessories, bike parts, tools
+
+**...and ANY other product you can think of!**
+
+## 🚀 Quick Setup Guide
 
 ### Prerequisites
-
 - Node.js 18 or higher
-- npm or yarn package manager
-- (Optional) RapidAPI key for live Amazon product data
+- npm package manager
+- Google Gemini API key (free)
+- ScrapingBee API key (free tier available)
 
-### Installation
+### 1. Clone & Install
+```bash
+# Clone the repository
+git clone https://github.com/fareed-ak/Ecomm-ChatBot.git
+cd Ecomm-ChatBot
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/fareed-ak/Ecomm-ChatBot.git
-   cd Ecomm-ChatBot
-   ```
-
-2. **Install dependencies**
-   ```bash
-   # Install root dependencies
-   npm install
-   
-   # Install backend dependencies
-   cd backend
-   npm install
-   
-   # Install frontend dependencies
-   cd ../frontend
-   npm install
-   ```
-
-3. **Environment Setup**
-   ```bash
-   # Create .env file in backend directory
-   cd ../backend
-   echo "RAPIDAPI_KEY=your_rapidapi_key_here" > .env
-   echo "RAPIDAPI_HOST=amazon-price1.p.rapidapi.com" >> .env
-   ```
-
-4. **Start the application**
-   ```bash
-   # Terminal 1: Start backend
-   cd backend
-   npm run dev
-   
-   # Terminal 2: Start frontend
-   cd frontend
-   npm run dev
-   ```
-
-5. **Open your browser**
-   - Frontend: `http://localhost:5173`
-   - Backend API: `http://localhost:5000`
-
-## 🏗️ Project Structure
-
-```
-Ecomm-ChatBot/
-├── backend/                 # Node.js Express server
-│   ├── server.js           # Main server file
-│   ├── products.json       # Fallback product data
-│   ├── package.json        # Backend dependencies
-│   └── .env               # Environment variables
-├── frontend/               # React frontend
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   │   ├── ChatWindow.jsx
-│   │   │   ├── MessageBubble.jsx
-│   │   │   └── ProductGrid.jsx
-│   │   ├── App.jsx         # Main app component
-│   │   └── main.jsx        # Entry point
-│   ├── package.json        # Frontend dependencies
-│   └── vite.config.js      # Vite configuration
-├── .gitignore              # Git ignore rules
-└── README.md               # Project documentation
+# Install dependencies for both frontend and backend
+npm install
+cd backend && npm install
+cd ../frontend && npm install
 ```
 
-## 🛠️ Technology Stack
+### 2. Get Your API Keys
 
-### Frontend
-- **React 18** - Modern React with hooks
-- **Vite** - Fast build tool and dev server
-- **CSS3** - Responsive styling with flexbox/grid
-- **Fetch API** - HTTP client for API calls
+#### 🧠 Google Gemini API Key (Required for AI)
+1. Go to [Google AI Studio](https://aistudio.google.com/)
+2. Sign in with your Google account
+3. Click "Get API Key" → "Create API Key"
+4. Copy your API key
 
-### Backend
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web framework
-- **CORS** - Cross-origin resource sharing
-- **dotenv** - Environment variable management
-- **File System** - Local product data fallback
+#### 🕷️ ScrapingBee API Key (Required for Product Search)
+1. Go to [ScrapingBee.com](https://www.scrapingbee.com/)
+2. Sign up for a free account
+3. Free tier includes: **1,000 API calls/month**
+4. Go to your dashboard and copy the API key
 
-### APIs & Services
-- **RapidAPI** - Amazon product search
-- **Amazon Price API** - Real-time product data
-
-## 🔧 Configuration
-
-### Environment Variables
+### 3. Environment Setup
 
 Create a `.env` file in the `backend` directory:
 
-```env
-# Required for live product data
-RAPIDAPI_KEY=your_rapidapi_key_here
-RAPIDAPI_HOST=amazon-price1.p.rapidapi.com
-
-# Optional: Custom port
-PORT=5000
+```bash
+cd backend
 ```
 
-### API Setup
+Create `.env` file with your API keys:
+```env
+# Google Gemini AI for understanding user intent
+GEMINI_API_KEY=your_actual_gemini_api_key_here
 
-1. **Get RapidAPI Key**:
-   - Sign up at [RapidAPI](https://rapidapi.com/)
-   - Subscribe to [Amazon Price API](https://rapidapi.com/amazonpriceapi/api/amazon-price1/)
-   - Copy your API key to `.env` file
+# ScrapingBee API for Amazon product scraping  
+SCRAPINGBEE_API_KEY=your_actual_scrapingbee_api_key_here
+```
 
-2. **Fallback Mode**:
-   - Without API key, the app uses local `products.json`
-   - Limited to sample products but fully functional
+**🔒 Important**: Never commit your `.env` file to Git! It's already in `.gitignore`.
+
+### 4. Start the Application
+
+```bash
+# Terminal 1: Start Backend Server
+cd backend
+npm run dev
+# Backend runs on: http://localhost:5000
+
+# Terminal 2: Start Frontend  
+cd frontend
+npm run dev
+# Frontend runs on: http://localhost:5173
+```
+
+### 5. Test Your Setup
+
+1. **Backend API Test**: Visit http://localhost:5000/api/test
+   ```json
+   {
+     "message": "Smart E-Commerce Chatbot Backend Ready!",
+     "geminiConfigured": true,
+     "scrapingbeeConfigured": true,
+     "status": "Ready to search Amazon India products"
+   }
+   ```
+
+2. **Frontend Test**: Visit http://localhost:5173
+   - You should see the chat interface
+   - Try: "Show me laptops under 50000"
 
 ## 💡 Usage Examples
 
 ### Basic Product Search
 ```
-User: "Show me laptops"
-Bot: "Found 8 laptops: [displays product grid]"
+You: "Show me laptops"
+Bot: "Found 12 laptop products:" [displays grid]
 ```
 
-### Smart Filtering
+### Smart Price Filtering
 ```
-User: "Black laptops under 50000"
-Bot: "Found 5 black laptops under ₹50,000: [filtered results]"
+You: "Samsung phones under 25000"
+Bot: "Found 8 Samsung phones under ₹25,000:" [filtered results]
 ```
 
 ### Conversational Context
 ```
-User: "Show me phones"
-Bot: "Found 12 phones: [displays results]"
-User: "Under 20000"
-Bot: "Found 6 phones under ₹20,000: [filtered previous results]"
+You: "Show me shirts"
+Bot: "Found 15 shirt products:" [shows shirts]
+You: "under 1500"
+Bot: "Found 9 shirts under ₹1,500:" [filters previous results]
+You: "black color"
+Bot: "Found 4 black shirts under ₹1,500:" [further filtered]
 ```
 
-## 🎯 Features in Detail
+### Any Product Category
+```
+You: "Gold jewelry above 10000"
+You: "Steam iron under 3000"  
+You: "Gym equipment"
+You: "Books about business"
+```
 
-### Smart Search
-- Natural language processing for product queries
-- Category detection (laptops, phones, headphones, etc.)
-- Brand recognition and filtering
-- Price range understanding
+## 🔧 API Management
 
-### Session Memory
-- Remembers previous searches within conversation
-- Applies new filters to existing results
-- Maintains conversation context
+### ScrapingBee API Limits
+- **Free Tier**: 1,000 requests/month
+- **When limit reached**: Get a new API key from ScrapingBee
+- **How to replace**: Update `SCRAPINGBEE_API_KEY` in `.env` file
+- **No downtime**: Just restart the backend server
 
-### Product Display
-- Grid layout with product cards
-- Product images, names, prices
-- Store information and links
-- Responsive design for all devices
+### Gemini AI Limits  
+- **Free Tier**: Very generous limits for personal use
+- **Rate limits**: Handled automatically with retry logic
+
+## 🏗️ Project Structure
+
+```
+Ecomm-ChatBot/
+├── backend/                    # Node.js Express server
+│   ├── server.js              # Main server with AI + scraping logic
+│   ├── .env                   # API keys (create this file)
+│   ├── package.json           # Backend dependencies
+│   └── products.json          # Fallback sample products
+├── frontend/                  # React application
+│   ├── src/
+│   │   ├── components/        # React components
+│   │   │   ├── ChatWindow.jsx     # Main chat interface
+│   │   │   ├── MessageBubble.jsx  # Chat message display
+│   │   │   └── ProductGrid.jsx    # Product results grid
+│   │   ├── App.jsx           # Main app component
+│   │   └── main.jsx          # Entry point
+│   ├── package.json          # Frontend dependencies
+│   └── vite.config.js        # Vite build configuration
+├── .gitignore                # Git ignore rules (includes .env)
+└── README.md                 # This documentation
+```
+
+## 🔍 Technical Architecture
+
+### Frontend (React + Vite)
+- **Chat Interface**: Real-time messaging with beautiful UI
+- **Product Grid**: Responsive grid layout for search results
+- **State Management**: React hooks for chat history and products
+- **API Communication**: Fetch API for backend communication
+
+### Backend (Node.js + Express)
+- **AI Integration**: Google Gemini for natural language understanding
+- **Web Scraping**: ScrapingBee for Amazon product data extraction  
+- **Intent Detection**: Extracts categories, brands, prices from user messages
+- **Session Management**: Remembers user context during conversations
+- **Error Handling**: Graceful fallbacks when APIs fail
+
+### APIs Used
+- **Google Gemini AI**: Understanding user intent and generating responses
+- **ScrapingBee**: Scraping Amazon India search results reliably
+- **Amazon India**: Source of all product data (prices, images, links)
+
+## 🛠️ Troubleshooting
+
+### Backend Won't Start
+```bash
+# Check if port 5000 is available
+netstat -ano | findstr :5000
+
+# If port is busy, kill the process
+taskkill /PID [PID_NUMBER] /F
+```
+
+### No Products Showing
+1. **Check API keys**: Ensure both keys are in `.env`
+2. **Restart backend**: `npm run dev` in backend folder
+3. **Check browser console**: Look for API errors
+4. **Test backend**: Visit http://localhost:5000/api/test
+
+### ScrapingBee Limit Reached
+1. **Get new API key**: Sign up for another ScrapingBee account
+2. **Update .env**: Replace `SCRAPINGBEE_API_KEY` with new key
+3. **Restart backend**: Stop and start the server
+4. **Alternative**: App falls back to sample products when scraping fails
+
+### Gemini AI Errors
+1. **Check API key**: Ensure valid key in `.env`
+2. **Rate limits**: Wait a few minutes and try again
+3. **Fallback**: App uses keyword matching when Gemini fails
 
 ## 🤝 Contributing
 
@@ -184,49 +277,22 @@ Bot: "Found 6 phones under ₹20,000: [filtered previous results]"
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Backend won't start:**
-```bash
-# Check if port 5000 is available
-netstat -ano | findstr :5000
-# Kill process if needed
-taskkill /PID [PID_NUMBER] /F
-```
-
-**Frontend can't connect to backend:**
-- Ensure backend is running on port 5000
-- Check CORS configuration
-- Verify API endpoints in frontend code
-
-**No products showing:**
-- Check if RapidAPI key is configured
-- Verify internet connection
-- Check browser console for errors
-
-### Debug Mode
-
-Enable detailed logging by setting `NODE_ENV=development` in your `.env` file.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [RapidAPI](https://rapidapi.com/) for Amazon product data
-- [React](https://reactjs.org/) for the amazing frontend framework
-- [Express.js](https://expressjs.com/) for the robust backend framework
-- [Vite](https://vitejs.dev/) for the blazing fast build tool
-
 ## 📞 Contact
 
 **Fareed AK** - [@fareed-ak](https://github.com/fareed-ak)
 
 Project Link: [https://github.com/fareed-ak/Ecomm-ChatBot](https://github.com/fareed-ak/Ecomm-ChatBot)
 
+## 🙏 Acknowledgments
+
+- [Google Gemini AI](https://ai.google.dev/) for intelligent conversation capabilities
+- [ScrapingBee](https://www.scrapingbee.com/) for reliable web scraping
+- [React](https://reactjs.org/) for the amazing frontend framework
+- [Express.js](https://expressjs.com/) for the robust backend framework
+- [Vite](https://vitejs.dev/) for blazing fast development
+
 ---
 
-⭐ Star this repo if you found it helpful!
+⭐ **Star this repo if you found it helpful!**
+
+**Happy Shopping! 🛍️**
