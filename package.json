@@ -1,0 +1,14 @@
+{
+  "name": "ecomm-chatbot",
+  "version": "1.0.0",
+  "description": "E-commerce chatbot with React and Node.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm run dev",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1,
+    "name": "HP Pavilion Gaming Laptop",
+    "price": 65000,
+    "color": "black",
+    "category": "laptop",
+    "site": "Amazon",
+    "image": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=300&h=200&fit=crop",
+    "description": "15.6 inch, Intel i5, 8GB RAM, 512GB SSD"
+  },
+  {
+    "id": 2,
+    "name": "Dell Inspiron 15 3000",
+    "price": 45000,
+    "color": "silver",
+    "category": "laptop",
+    "site": "Flipkart",
+    "image": "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=300&h=200&fit=crop",
+    "description": "15.6 inch, Intel i3, 4GB RAM, 1TB HDD"
+  },
+  {
+    "id": 3,
+    "name": "MacBook Air M2",
+    "price": 115000,
+    "color": "silver",
+    "category": "laptop",
+    "site": "Amazon",
+    "image": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=300&h=200&fit=crop",
+    "description": "13.6 inch, Apple M2, 8GB RAM, 256GB SSD"
+  },
+  {
+    "id": 4,
+    "name": "iPhone 15",
+    "price": 79900,
+    "color": "blue",
+    "category": "phone",
+    "site": "Amazon",
+    "image": "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=300&h=200&fit=crop",
+    "description": "128GB, 6.1 inch display, A17 Pro chip"
+  },
+  {
+    "id": 5,
+    "name": "Samsung Galaxy S24",
+    "price": 74999,
+    "color": "black",
+    "category": "phone",
+    "site": "Flipkart",
+    "image": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=200&fit=crop",
+    "description": "256GB, 6.2 inch display, Snapdragon 8 Gen 3"
+  },
+  {
+    "id": 6,
+    "name": "Sony WH-1000XM5 Headphones",
+    "price": 29990,
+    "color": "black",
+    "category": "headphones",
+    "site": "Amazon",
+    "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=200&fit=crop",
+    "description": "Wireless, Noise Cancelling, 30hr battery"
+  },
+  {
+    "id": 7,
+    "name": "Apple AirPods Pro",
+    "price": 24900,
+    "color": "white",
+    "category": "headphones",
+    "site": "Flipkart",
+    "image": "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?w=300&h=200&fit=crop",
+    "description": "Active Noise Cancellation, Spatial Audio"
+  },
+  {
+    "id": 8,
+    "name": "Asus ROG Strix Gaming Laptop",
+    "price": 85000,
+    "color": "black",
+    "category": "laptop",
+    "site": "Amazon",
+    "image": "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=300&h=200&fit=crop",
+    "description": "15.6 inch, AMD Ryzen 7, 16GB RAM, RTX 3060"
+  }
+]
