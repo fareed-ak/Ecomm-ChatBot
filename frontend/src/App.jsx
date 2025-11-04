@@ -80,13 +80,13 @@ function App() {
 
       <footer className="app-footer">
         <div className="footer-links">
-          <span className="footer-link">Made with &hearts; by Fareed</span>
+          <span className="footer-link">&copy; E-Commerce ChatBot | All rights reserved</span>
           
         </div>
         <div className="footer-info">
           <span>🔒 Secure Connection</span>
           <span>•</span>
-          <span>AI-Powered Shopping Assistant</span>
+          <span>Powered by AI</span>
         </div>
       </footer>
     </div>
