@@ -4,7 +4,7 @@ An intelligent shopping assistant that helps users find **any product** on Amazo
 
 ![E-Commerce ChatBot](https://img.shields.io/badge/Status-Active-green) ![Node.js](https://img.shields.io/badge/Node.js-18+-blue) ![React](https://img.shields.io/badge/React-18+-blue) ![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-orange) ![ScrapingBee](https://img.shields.io/badge/Scraping-ScrapingBee-yellow)
 
-## ✨ Features
+## ✨ Features 
 
 - **🤖 Natural Language Understanding**: Ask in plain English - "Show me black shirts under 2000"
 - **🔍 Universal Product Search**: Find ANY product - electronics, clothing, jewelry, home appliances, books, etc.
