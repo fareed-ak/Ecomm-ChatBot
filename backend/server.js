@@ -1,4 +1,5 @@
 // backend/server.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -11,192 +12,273 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
-// Load local products data as fallback
+// Load local products as fallback
 let localProducts = [];
 try {
   const productsData = fs.readFileSync(path.join(__dirname, 'products.json'), 'utf8');
   localProducts = JSON.parse(productsData);
-  console.log(`📦 Loaded ${localProducts.length} local products as fallback`);
 } catch (error) {
   console.error('Error loading local products:', error);
 }
 
-// Cache for API products
-let apiProductsCache = null;
-let cacheTimestamp = null;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// User sessions with memory
+const userSessions = new Map();
 
-// Fetch products from Fake Store API with proper categories
-async function fetchProductsFromAPI() {
+function getUserSession(sessionId = 'default') {
+  if (!userSessions.has(sessionId)) {
+    userSessions.set(sessionId, {
+      lastQuery: '',
+      lastResults: [],
+      lastCategory: '',
+      conversationHistory: []
+    });
+  }
+  return userSessions.get(sessionId);
+}
+
+// Amazon API search function
+async function searchAmazonProducts(query) {
+  if (!process.env.RAPIDAPI_KEY) {
+    console.log('No RapidAPI key found, using local products');
+    return localProducts.filter(p => 
+      p.name.toLowerCase().includes(query.toLowerCase()) ||
+      p.category.toLowerCase().includes(query.toLowerCase())
+    );
+  }
+
   try {
-    console.log('🌐 Fetching products from Fake Store API...');
+    console.log(`🔍 Searching Amazon for: ${query}`);
     
-    const response = await fetch('https://fakestoreapi.com/products');
+    const url = `https://amazon-price1.p.rapidapi.com/search?keywords=${encodeURIComponent(query)}&marketplace=IN`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
+        'X-RapidAPI-Host': process.env.RAPIDAPI_HOST || 'amazon-price1.p.rapidapi.com'
+      }
+    });
+
     if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`);
+      throw new Error(`API error: ${response.status}`);
     }
-    
+
     const apiProducts = await response.json();
     
-    // Transform API products to our format
-    const transformedProducts = apiProducts.map(product => {
-      // Map categories properly
-      let category = 'electronics';
-      if (product.category.includes('clothing')) {
-        category = 'clothing';
-      } else if (product.category === 'jewelery') {
-        category = 'jewelry';
-      }
-      
-      return {
-        id: product.id + 1000,
-        name: product.title,
-        price: Math.round(product.price * 80), // Convert USD to INR
-        color: 'mixed',
-        category: category,
-        site: 'Online Store',
-        image: product.image,
-        description: product.description.substring(0, 100) + '...',
-        rating: product.rating?.rate || 4.0,
-        storeUrl: `https://fakestoreapi.com/products/${product.id}`
-      };
-    });
-    
-    console.log(`✅ Successfully fetched ${transformedProducts.length} products from API`);
+    // Transform API response to our format
+    const transformedProducts = apiProducts.slice(0, 10).map((product, index) => ({
+      id: product.asin || `api-${index}`,
+      name: product.title || 'Product',
+      price: product.price?.raw ? Math.round(parseFloat(product.price.raw.replace(/[^\d.]/g, ''))) : 0,
+      color: 'Mixed',
+      category: detectCategory(product.title || ''),
+      site: 'Amazon India',
+      image: product.thumbnail || 'https://via.placeholder.com/150',
+      description: (product.title || '').substring(0, 100) + '...',
+      storeUrl: product.url || '#',
+      asin: product.asin
+    }));
+
     return transformedProducts;
     
   } catch (error) {
-    console.error('❌ Error fetching from API:', error.message);
-    return localProducts;
-  }
-}
-
-// Get products with caching
-async function getProducts() {
-  const now = Date.now();
-  
-  if (apiProductsCache && cacheTimestamp && (now - cacheTimestamp) < CACHE_DURATION) {
-    console.log('📋 Using cached products');
-    return apiProductsCache;
-  }
-  
-  const products = await fetchProductsFromAPI();
-  apiProductsCache = products;
-  cacheTimestamp = now;
-  
-  return products;
-}
-
-// Enhanced search function that works with "laptop"
-async function searchProducts(query) {
-  const products = await getProducts();
-  const searchTerm = query.toLowerCase();
-  
-  // Keywords mapping for better search
-  const categoryKeywords = {
-    'laptop': ['laptop', 'notebook', 'computer'],
-    'phone': ['phone', 'mobile', 'smartphone', 'iphone', 'android'],
-    'headphones': ['headphones', 'headphone', 'earphones', 'earbuds', 'airpods', 'audio'],
-    'electronics': ['electronics', 'electronic', 'gadget', 'gadgets', 'tech'],
-    'clothing': ['clothes', 'clothing', 'shirt', 'dress', 'jacket', 't-shirt'],
-    'jewelry': ['jewelry', 'jewellery', 'ring', 'necklace', 'earring', 'bracelet']
-  };
-  
-  // Find matching category
-  let targetCategory = null;
-  for (const [category, keywords] of Object.entries(categoryKeywords)) {
-    if (keywords.some(keyword => searchTerm.includes(keyword))) {
-      targetCategory = category;
-      break;
-    }
-  }
-  
-  // If no category found, search in all product fields
-  let results = products.filter(product => {
-    const productName = product.name.toLowerCase();
-    const productDesc = product.description ? product.description.toLowerCase() : '';
-    const productCategory = product.category.toLowerCase();
-    
-    // If specific category found, filter by that
-    if (targetCategory) {
-      return productCategory === targetCategory;
-    }
-    
-    // Otherwise, search in all fields
-    return (
-      productName.includes(searchTerm) ||
-      productDesc.includes(searchTerm) ||
-      productCategory.includes(searchTerm)
+    console.error('Amazon API error:', error.message);
+    // Fallback to local search
+    return localProducts.filter(p => 
+      p.name.toLowerCase().includes(query.toLowerCase()) ||
+      p.category.toLowerCase().includes(query.toLowerCase())
     );
+  }
+}
+
+// Detect category from product title
+function detectCategory(title) {
+  const titleLower = title.toLowerCase();
+  
+  if (titleLower.includes('laptop') || titleLower.includes('notebook')) return 'laptop';
+  if (titleLower.includes('phone') || titleLower.includes('mobile')) return 'phone';
+  if (titleLower.includes('headphone') || titleLower.includes('earphone')) return 'headphones';
+  if (titleLower.includes('tablet')) return 'tablet';
+  if (titleLower.includes('watch')) return 'watch';
+  
+  return 'electronics';
+}
+
+// Extract filters from message
+function extractFilters(message, session) {
+  const filters = {};
+  const lowerMessage = message.toLowerCase();
+  
+  // Price filters
+  const priceMatch = lowerMessage.match(/(?:under|below|less than|max(?:imum)?|cheaper than)\s*₹?(\d+(?:,\d+)?k?)|(?:above|over|more than|min(?:imum)?)\s*₹?(\d+(?:,\d+)?k?)/i);
+  if (priceMatch) {
+    let priceStr = priceMatch[1] || priceMatch[2];
+    if (priceStr) {
+      // Handle "30k" format
+      if (priceStr.endsWith('k')) {
+        priceStr = priceStr.replace('k', '000');
+      }
+      priceStr = priceStr.replace(/,/g, ''); // Remove commas
+      const price = parseInt(priceStr);
+      if (priceMatch[1]) { // under/below
+        filters.maxPrice = price;
+      } else { // above/over
+        filters.minPrice = price;
+      }
+    }
+  }
+  
+  // Color filters
+  const colors = ['black', 'white', 'silver', 'blue', 'red', 'gold', 'gray', 'green'];
+  colors.forEach(color => {
+    if (lowerMessage.includes(color)) {
+      filters.color = color;
+    }
   });
   
-  return results;
+  // Brand filters (common ones)
+  const brands = ['apple', 'samsung', 'dell', 'hp', 'lenovo', 'sony', 'boat', 'realme', 'xiaomi', 'oneplus'];
+  brands.forEach(brand => {
+    if (lowerMessage.includes(brand)) {
+      filters.brand = brand;
+    }
+  });
+  
+  return filters;
+}
+
+// Apply filters to products
+function applyFilters(products, filters) {
+  return products.filter(product => {
+    // Price filters
+    if (filters.maxPrice && product.price > filters.maxPrice) return false;
+    if (filters.minPrice && product.price < filters.minPrice) return false;
+    
+    // Color filter
+    if (filters.color && !product.color.toLowerCase().includes(filters.color)) return false;
+    
+    // Brand filter
+    if (filters.brand && !product.name.toLowerCase().includes(filters.brand)) return false;
+    
+    return true;
+  });
+}
+
+// Enhanced search with memory
+async function enhancedSearch(message, session) {
+  const lowerMessage = message.toLowerCase();
+  
+  // Check if this is a filter-only query (like "under 30000")
+  const isFilterQuery = /^(under|below|less than|above|over|more than|max|min|black|white|silver|blue|red|gold|apple|samsung|dell|hp|lenovo|sony|boat|realme|xiaomi|oneplus)/i.test(lowerMessage);
+  
+  let searchQuery = message;
+  let products = [];
+  
+  // If it's a filter query and we have previous results, apply filters to last results
+  if (isFilterQuery && session.lastResults.length > 0) {
+    console.log('🔧 Applying filters to previous results');
+    products = [...session.lastResults];
+    searchQuery = session.lastQuery; // Use previous query for context
+  } else {
+    // Regular search
+    console.log('🔍 Performing new search');
+    products = await searchAmazonProducts(message);
+  }
+  
+  // Extract and apply filters
+  const filters = extractFilters(message, session);
+  const filteredProducts = applyFilters(products, filters);
+  
+  // Update session
+  session.lastQuery = searchQuery;
+  session.lastResults = filteredProducts;
+  
+  return {
+    products: filteredProducts,
+    filters: filters,
+    originalQuery: message
+  };
 }
 
 // Generate smart response
-function generateBotResponse(query, foundProducts) {
-  if (foundProducts.length === 0) {
-    return `Sorry, I couldn't find any products matching "${query}". Try searching for: laptops, phones, headphones, clothing, or jewelry!`;
+function generateResponse(message, results) {
+  const { products, filters } = results;
+  
+  if (products.length === 0) {
+    return `Sorry, I couldn't find products matching "${message}". Try searching for laptops, phones, or headphones!`;
   }
   
-  if (foundProducts.length === 1) {
-    return `Perfect! I found exactly what you're looking for:`;
+  let response = `Found ${products.length} products`;
+  
+  // Add filter context
+  const filterDesc = [];
+  if (filters.maxPrice) filterDesc.push(`under ₹${filters.maxPrice.toLocaleString()}`);
+  if (filters.minPrice) filterDesc.push(`above ₹${filters.minPrice.toLocaleString()}`);
+  if (filters.color) filterDesc.push(`${filters.color} colored`);
+  if (filters.brand) filterDesc.push(`${filters.brand} branded`);
+  
+  if (filterDesc.length > 0) {
+    response += ` ${filterDesc.join(', ')}`;
   }
   
-  return `Great! I found ${foundProducts.length} products matching "${query}":`;
+  response += ':';
+  
+  return response;
 }
 
 // Routes
 app.get('/api/test', (req, res) => {
   res.json({ 
-    message: 'E-Commerce Chatbot Backend - Online Products Only!',
-    timestamp: new Date().toISOString(),
-    apiStatus: 'Ready'
+    message: 'E-Commerce Chatbot Backend Ready!',
+    hasApiKey: !!process.env.RAPIDAPI_KEY,
+    localProducts: localProducts.length
   });
 });
 
-// Chat route - simplified and fixed
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message } = req.body;
-
+    const { message, sessionId = 'default' } = req.body;
+    
     if (!message || !message.trim()) {
       return res.json({
-        reply: "Please ask me something! I can help you find laptops, phones, headphones, and more. 😊",
+        reply: "Please ask me about products!",
         products: []
       });
     }
-
-    // Search products
-    const foundProducts = await searchProducts(message);
-    const botReply = generateBotResponse(message, foundProducts);
-
-    console.log(`🔍 Search: "${message}" | Found: ${foundProducts.length} products`);
-
+    
+    const session = getUserSession(sessionId);
+    
+    // Handle special commands
+    if (message.toLowerCase().includes('clear') || message.toLowerCase().includes('reset')) {
+      session.lastQuery = '';
+      session.lastResults = [];
+      return res.json({
+        reply: "I've cleared your search history. What would you like to search for?",
+        products: []
+      });
+    }
+    
+    // Enhanced search with memory
+    const searchResults = await enhancedSearch(message, session);
+    const botReply = generateResponse(message, searchResults);
+    
+    console.log(`🤖 Query: "${message}" | Found: ${searchResults.products.length} products | Filters:`, searchResults.filters);
+    
     res.json({
       reply: botReply,
-      products: foundProducts
+      products: searchResults.products
     });
+    
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('Error:', error);
     res.status(500).json({
-      reply: "Sorry, I encountered an error. Please try again.",
+      reply: "Sorry, there was an error. Please try again.",
       products: []
     });
   }
 });
 
-app.get('/api/products', async (req, res) => {
-  try {
-    const products = await getProducts();
-    res.json(products);
-  } catch (error) {
-    console.error('Error getting products:', error);
-    res.json([]);
-  }
-});
-
 app.listen(PORT, () => {
-  console.log(`🚀 Backend server running on http://localhost:${PORT}`);
-  console.log(`🛍️ Focused on online products with store links!`);
+  console.log(`🚀 Backend running on http://localhost:${PORT}`);
+  console.log(`🔑 RapidAPI Key: ${process.env.RAPIDAPI_KEY ? 'Configured' : 'Missing'}`);
 });
